@@ -8,7 +8,11 @@ set(SFML_DIR "C:/Libraries/SFML-3.0.2/lib/cmake/SFML")
 
 find_package(SFML 3 REQUIRED COMPONENTS System Window Graphics Audio Network)
 
-add_executable(HookLeap)
+file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp)
+
+add_executable(HookLeap ${SOURCES})
+
+target_include_directories(HookLeap PRIVATE include)
 
 target_link_libraries(HookLeap 
 SFML::System
@@ -16,9 +20,3 @@ SFML::Window
 SFML::Graphics
 SFML::Audio
 SFML::Network )
-
-target_sources(HookLeap
-  PRIVATE
-    src/main.cpp
-)
-

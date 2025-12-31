@@ -14,6 +14,12 @@ add_executable(HookLeap ${SOURCES})
 
 target_include_directories(HookLeap PRIVATE include)
 
+add_custom_command(TARGET HookLeap POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${CMAKE_SOURCE_DIR}/assets
+    $<TARGET_FILE_DIR:HookLeap>/assets
+)
+
 target_link_libraries(HookLeap 
 SFML::System
 SFML::Window

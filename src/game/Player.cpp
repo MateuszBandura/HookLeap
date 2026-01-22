@@ -1,5 +1,6 @@
 #include "game/Player.hpp"
 #include <SFML/Window/Keyboard.hpp>
+#include <SFML/Window/Mouse.hpp>
 #include <cmath>
 
 Player::Player(const sf::Texture& texture)
@@ -15,7 +16,6 @@ void Player::setAnimationRow(PlayerState state, int row, int frameCount, bool sh
     animData.frameCount = frameCount;
     animData.loop = shouldLoop;
     
-    // Create frames for this animation
     animData.frames.clear();
     for (int i = 0; i < frameCount; ++i)
     {
@@ -30,8 +30,19 @@ void Player::changeState(PlayerState newState)
     if (currentState != newState)
     {
         currentState = newState;
-        frameId = 0; // Reset animation to first frame
+        frameId = 0;
         timeout = 0;
+        
+        // FIXED: Immediately set texture rect to first frame of new state
+        // This prevents showing wrong frames during state transitions
+        if (animations.find(currentState) != animations.end())
+        {
+            const AnimationData& anim = animations[currentState];
+            if (!anim.frames.empty())
+            {
+                setTextureRect(anim.frames[0]);
+            }
+        }
     }
 }
 
@@ -39,15 +50,12 @@ void Player::updateDirection()
 {
     sf::Vector2f vel = getVelocity();
     
-    // Only change direction when actually moving horizontally
     if (vel.x < -0.1f)
     {
         if (currentDirection != Direction::Left)
         {
             currentDirection = Direction::Left;
-            // Flip sprite horizontally
             setScale({-1.0f, 1.0f});
-            // Adjust position since flipping changes the origin
             setOrigin({128.0f, 0.0f});
         }
     }
@@ -56,7 +64,6 @@ void Player::updateDirection()
         if (currentDirection != Direction::Right)
         {
             currentDirection = Direction::Right;
-            // Reset to normal
             setScale({1.0f, 1.0f});
             setOrigin({0.0f, 0.0f});
         }
@@ -70,78 +77,165 @@ bool Player::isAnimationFinished() const
         return true;
     
     const AnimationData& anim = it->second;
-    
-    // Animation is finished if it's non-looping and we're on the last frame
     return !anim.loop && (frameId >= anim.frameCount - 1);
+}
+
+void Player::shootHook(const sf::Vector2f& mousePos)
+{
+    if (hook.isAttached())
+        return;
+    
+    sf::Vector2f playerCenter = getPosition() + sf::Vector2f(64, 64);
+    sf::Vector2f direction = mousePos - playerCenter;
+    
+    hook.shoot(playerCenter, direction);
+}
+
+void Player::releaseHook()
+{
+    hook.release();
+}
+
+void Player::updateHook(const sf::Time& elapsed, const std::vector<std::shared_ptr<Platform>>& platforms)
+{
+    sf::Vector2f playerCenter = getPosition() + sf::Vector2f(64, 64);
+    
+    hook.update(elapsed, playerCenter);
+    
+    if (hook.getState() == HookState::Shooting)
+    {
+        for (const auto& platform : platforms)
+        {
+            if (hook.checkPlatformCollision(platform, playerCenter))
+            {
+                break;
+            }
+        }
+    }
+    
+    if (hook.isAttached())
+    {
+        if (hook.shouldBreak(playerCenter))
+        {
+            hook.release();
+        }
+    }
+}
+
+void Player::applySwingPhysics(const sf::Time& elapsed)
+{
+    if (!hook.isAttached())
+        return;
+    
+    sf::Vector2f playerCenter = getPosition() + sf::Vector2f(64, 64);
+    sf::Vector2f attachPoint = hook.getAttachPoint();
+    
+    sf::Vector2f ropeVec = playerCenter - attachPoint;
+    float ropeLength = std::sqrt(ropeVec.x * ropeVec.x + ropeVec.y * ropeVec.y);
+    
+    if (ropeLength < 0.1f)
+        return;
+    
+    sf::Vector2f ropeDir = ropeVec / ropeLength;
+    sf::Vector2f tangent(-ropeDir.y, ropeDir.x);
+    
+    float swingInput = 0;
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A) || 
+        sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Left))
+    {
+        swingInput = -1.0f;
+    }
+    else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D) || 
+             sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Right))
+    {
+        swingInput = 1.0f;
+    }
+    
+    sf::Vector2f vel = getVelocity();
+    vel += tangent * swingInput * SWING_ACCELERATION * elapsed.asSeconds();
+    vel.y += 980.0f * elapsed.asSeconds();
+    
+    float radialVel = vel.x * ropeDir.x + vel.y * ropeDir.y;
+    vel -= ropeDir * radialVel;
+    
+    float speed = std::sqrt(vel.x * vel.x + vel.y * vel.y);
+    if (speed > MAX_SWING_SPEED)
+    {
+        vel = vel / speed * MAX_SWING_SPEED;
+    }
+    
+    setVelocity(vel);
+    
+    playerCenter = getPosition() + sf::Vector2f(64, 64);
+    ropeVec = playerCenter - attachPoint;
+    float currentLength = std::sqrt(ropeVec.x * ropeVec.x + ropeVec.y * ropeVec.y);
+    
+    if (currentLength > Hook::MAX_ROPE_LENGTH)
+    {
+        sf::Vector2f constrainedPos = attachPoint + (ropeVec / currentLength) * Hook::MAX_ROPE_LENGTH;
+        setPosition(constrainedPos - sf::Vector2f(64, 64));
+    }
 }
 
 void Player::updateState()
 {
     sf::Vector2f vel = getVelocity();
     
-    // Update direction based on movement
     updateDirection();
     
-    // Determine state based on velocity and ground contact
+    if (hook.isAttached())
+    {
+        changeState(PlayerState::Hooked);
+        wasOnGround = onGround;
+        return;
+    }
+    
     if (!onGround)
     {
         if (vel.y < 0)
         {
-            // Moving upward - jumping
             changeState(PlayerState::Jumping);
         }
         else
         {
-            // Moving downward - need to determine if we should play BeginFalling or Falling
             if (currentState == PlayerState::BeginFalling)
             {
-                // Already in BeginFalling, check if animation finished
                 if (isAnimationFinished())
                 {
-                    // Transition to continuous falling
                     changeState(PlayerState::Falling);
                 }
-                // Otherwise stay in BeginFalling until animation completes
             }
             else if (currentState == PlayerState::Jumping && isAnimationFinished())
             {
-                // Jumped and now starting to fall
                 changeState(PlayerState::BeginFalling);
             }
             else if (wasOnGround && currentState != PlayerState::Jumping)
             {
-                // Just walked off a ledge - start BeginFalling
                 changeState(PlayerState::BeginFalling);
             }
             else if (currentState != PlayerState::Jumping && currentState != PlayerState::BeginFalling)
             {
-                // Default to falling if not jumping or beginning to fall
                 changeState(PlayerState::Falling);
             }
         }
     }
     else
     {
-        // On ground
         if (std::abs(vel.x) > 0.1f)
         {
-            // Moving horizontally - walking
             changeState(PlayerState::Walking);
         }
         else
         {
-            // Not moving - idle
             changeState(PlayerState::Idle);
         }
     }
     
-    // Update previous ground state for next frame
     wasOnGround = onGround;
 }
 
 void Player::animate(const sf::Time &elapsed)
 {
-    // Check if current state has animation data
     if (animations.find(currentState) == animations.end())
         return;
     
@@ -153,7 +247,6 @@ void Player::animate(const sf::Time &elapsed)
     {
         if (anim.loop)
         {
-            // Looping animation
             if (frameId >= anim.frameCount - 1)
             {
                 frameId = 0;
@@ -165,65 +258,81 @@ void Player::animate(const sf::Time &elapsed)
         }
         else
         {
-            // Non-looping animation (like jumping or begin falling)
             if (frameId < anim.frameCount - 1)
             {
                 frameId++;
             }
-            // Stay on last frame if reached
         }
         
         timeout = 0;
     }
     
-    // Set the texture rect for current frame
+    // FIXED: Ensure frameId is always within valid bounds
+    if (frameId >= anim.frames.size())
+    {
+        frameId = 0;
+    }
+    
     if (frameId < anim.frames.size())
     {
         setTextureRect(anim.frames[frameId]);
     }
 }
 
-void Player::handleInput()
+void Player::handleInput(const sf::RenderWindow& window)
 {
+    if (sf::Mouse::isButtonPressed(sf::Mouse::Button::Left))
+    {
+        if (!hook.isAttached() && hook.getState() == HookState::Inactive)
+        {
+            sf::Vector2i mousePixelPos = sf::Mouse::getPosition(window);
+            sf::Vector2f mouseWorldPos = window.mapPixelToCoords(mousePixelPos);
+            shootHook(mouseWorldPos);
+        }
+    }
+    
+    if (hook.isAttached())
+    {
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) ||
+            sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space) ||
+            sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Up) ||
+            sf::Mouse::isButtonPressed(sf::Mouse::Button::Right))
+        {
+            releaseHook();
+        }
+    }
+    
     sf::Vector2f vel = getVelocity();
     
-    // Horizontal movement - only modify X velocity
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A) || 
         sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Left))
     {
-        vel.x = -MOVE_SPEED;
+        if (!hook.isAttached())
+            vel.x = -MOVE_SPEED;
     }
     else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D) || 
              sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Right))
     {
-        vel.x = MOVE_SPEED;
-    }
-    else
-    {
-        // No horizontal input, let friction handle it
-        vel.x = getVelocity().x;
+        if (!hook.isAttached())
+            vel.x = MOVE_SPEED;
     }
     
-    // Jump - only modify Y velocity when jumping
-    if (onGround && (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) || 
-                     sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space) ||
-                     sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Up)))
+    if (onGround && !hook.isAttached() &&
+        (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::W) || 
+         sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Space) ||
+         sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Up)))
     {
         vel.y = JUMP_FORCE;
         onGround = false;
     }
-    else
-    {
-        // Keep existing Y velocity (gravity/jumping)
-        vel.y = getVelocity().y;
-    }
     
-    setVelocity(vel);
+    if (!hook.isAttached())
+        setVelocity(vel);
 }
 
 void Player::jump()
 {
-    if (!onGround) return;
+    if (!onGround || hook.isAttached()) return;
     
     sf::Vector2f vel = getVelocity();
     vel.y = JUMP_FORCE;
@@ -249,4 +358,40 @@ int Player::getScore() const
 void Player::addScore(int points)
 {
     score += points;
+}
+
+void Player::forceState(PlayerState newState)
+{
+    currentState = newState;
+    frameId = 0;
+    timeout = 0;
+    
+    // Set the texture rect immediately
+    if (animations.find(currentState) != animations.end())
+    {
+        const AnimationData& anim = animations[currentState];
+        if (!anim.frames.empty())
+        {
+            setTextureRect(anim.frames[0]);
+        }
+    }
+}
+
+void Player::reset()
+{
+    // Reset velocity and state
+    velocity = sf::Vector2f(0, 0);
+    onGround = false;
+    wasOnGround = false;
+    
+    // Reset hook
+    hook.release();
+    
+    // Reset facing direction
+    currentDirection = Direction::Right;
+    setScale({1.0f, 1.0f});
+    setOrigin({0.0f, 0.0f});
+    
+    // Force state to Idle with proper frame reset
+    forceState(PlayerState::Idle);
 }

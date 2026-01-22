@@ -19,7 +19,7 @@ public:
     PlatformType getType() const;
     void setType(PlatformType type);
     
-    bool isDeadly() const;  // Returns true if this platform kills on contact
+    bool isDeadly() const;
 
 private:
     PlatformType platformType;

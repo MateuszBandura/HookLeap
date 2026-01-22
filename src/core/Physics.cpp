@@ -82,7 +82,7 @@ bool Physics::checkPlatformCollision(const sf::FloatRect& bounds, Platform& plat
 
 bool Physics::handleCollisions(Character& character, sf::Vector2f& velocity, bool& fellInPit, bool& hitDeadlyPlatform)
 {
-    sf::FloatRect bounds = character.getGlobalHitbox();  // Use custom hitbox instead of sprite bounds
+    sf::FloatRect bounds = character.getGlobalHitbox();
     bool isOnGround = false;
     fellInPit = false;
     hitDeadlyPlatform = false;
@@ -96,7 +96,7 @@ bool Physics::handleCollisions(Character& character, sf::Vector2f& velocity, boo
             lowestPlatform = platformBounds.position.y + platformBounds.size.y;
     }
     
-    if (bounds.position.y > lowestPlatform + 200.0f) // 200 pixels below lowest platform
+    if (bounds.position.y > lowestPlatform + 200.0f)
     {
         fellInPit = true;
         return false;

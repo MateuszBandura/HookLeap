@@ -22,7 +22,7 @@ public:
     void setHitbox(const sf::FloatRect& hitbox_);
     void setHitbox(float offsetX, float offsetY, float width, float height);
     sf::FloatRect getHitbox() const;
-    sf::FloatRect getGlobalHitbox() const;  // Hitbox in world coordinates
+    sf::FloatRect getGlobalHitbox() const;
 
 protected:
     float health;

@@ -1,0 +1,14 @@
+forest
+ground 0 500 200 16
+platform 200 400
+platform 450 350
+platform 100 250
+platform 550 200
+platform 900 300
+platform 1200 250
+checkpoint 300 370
+pickup 500 320
+pickup 650 170
+pickup 950 270
+pickup 1250 220
+win 1300 400

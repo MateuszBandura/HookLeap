@@ -6,7 +6,7 @@ class AnimatedSprite : public sf::Sprite
 public:
     using sf::Sprite::Sprite;
 
-    void animate(const sf::Time &elapsed);
+    virtual void animate(const sf::Time &elapsed);
     void addAnimationFrame(const sf::IntRect &animationFrame);
 
     void setFps(int fps_);

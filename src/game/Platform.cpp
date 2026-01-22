@@ -9,7 +9,6 @@ void Platform::setSize(float width, float height)
 {
     size = sf::Vector2f(width, height);
     
-    // Calculate scale to fit the desired size
     sf::Vector2f textureSize = static_cast<sf::Vector2f>(getTexture().getSize());
     if (textureSize.x > 0 && textureSize.y > 0)
     {
@@ -21,12 +20,10 @@ sf::FloatRect Platform::getBounds() const
 {
     if (size.x > 0 && size.y > 0)
     {
-        // Use custom size if set
         return sf::FloatRect(getPosition(), size);
     }
     else
     {
-        // Use sprite bounds
         return getGlobalBounds();
     }
 }

@@ -25,4 +25,4 @@ SFML::System
 SFML::Window
 SFML::Graphics
 SFML::Audio
-SFML::Network )
+SFML::Network)

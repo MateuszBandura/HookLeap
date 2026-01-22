@@ -34,7 +34,7 @@ public:
     static constexpr float HOOK_SPEED = 800.0f;
     static constexpr float MAX_ROPE_LENGTH = 400.0f;
     static constexpr float MAX_HOOK_RANGE = 500.0f;
-    static constexpr float HOOK_DURATION = 3.0f;
+    static constexpr float HOOK_DURATION = 5.0f;
     static constexpr float MAX_ROPE_ANGLE = 160.0f;
     
 private:

@@ -1,14 +1,16 @@
 forest
-ground 0 500 200 16
-platform 200 400
-platform 450 350
-platform 100 250
-platform 550 200
-platform 900 300
-platform 1200 250
-checkpoint 300 370
-pickup 500 320
-pickup 650 170
-pickup 950 270
-pickup 1250 220
-win 1300 400
+ground 0 500 640 32
+platform 320 400
+platform 500 400
+platform 800 100
+platform 1200 400
+platform 1200 700
+checkpoint 1216 368
+platform 1500 300
+platform 1700 100
+platform 2000 100
+platform 2200 300
+pickup 516 368
+pickup 816 500
+pickup 1216 668
+win 2216 268

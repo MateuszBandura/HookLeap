@@ -1,12 +1,16 @@
 dessert
-ground 0 550 200 32
-platform 150 450
-platform 400 380
-platform 650 310
-obstacle 500 500
-platform 900 240
-checkpoint 200 420
-pickup 450 350
-pickup 700 280
-pickup 950 210
-win 1000 400
+ground 0 500 640 32
+platform 320 400
+platform 500 400
+platform 800 100
+platform 1200 400
+platform 1200 700
+checkpoint 1216 368
+platform 1500 300
+platform 1700 100
+platform 2000 100
+platform 2200 300
+pickup 516 368
+pickup 816 500
+pickup 1216 668
+win 2216 268

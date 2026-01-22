@@ -449,7 +449,7 @@ void MainWindow::updateUI()
 void MainWindow::respawnPlayer()
 {
     deaths++;
-    player->setPosition(lastCheckpoint);
+    player->setPosition({lastCheckpoint.x-16, lastCheckpoint.y-16});
     player->reset();
 }
 
